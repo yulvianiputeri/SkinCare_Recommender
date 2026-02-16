@@ -1,0 +1,494 @@
+# Parameter Sensitivity Analysis
+# Untuk menjawab Reviewer B #3: "Tidak ada analisis sensitivitas terhadap parameter"
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.decomposition import TruncatedSVD
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+from sklearn.metrics.pairwise import cosine_similarity
+import warnings
+warnings.filterwarnings('ignore')
+
+class ParameterSensitivityAnalysis:
+    """Analisis sensitivitas parameter untuk TF-IDF, SVD, dan Random Forest"""
+    
+    def __init__(self):
+        self.df = None
+        self.results = {
+            'svd': [],
+            'tfidf': [],
+            'rf': []
+        }
+        
+    def load_data(self):
+        """Load dataset"""
+        paths = ['dataset/processed/skincare_processed.csv', 
+                 'dataset/processed/skincare_sample.csv']
+        
+        for path in paths:
+            try:
+                self.df = pd.read_csv(path)
+                print(f"✅ Loaded: {len(self.df):,} products from {path}")
+                
+                # Prepare basic features
+                self.prepare_basic_features()
+                return True
+            except:
+                continue
+        
+        print("❌ Cannot load data!")
+        return False
+    
+    def prepare_basic_features(self):
+        """Prepare features untuk semua model"""
+        print("🔧 Preparing features...")
+        
+        # Encoding
+        le_brand = LabelEncoder()
+        le_category = LabelEncoder()
+        
+        self.df['brand_encoded'] = le_brand.fit_transform(self.df['brand_name'].astype(str))
+        self.df['category_encoded'] = le_category.fit_transform(self.df['default_category'].astype(str))
+        
+        # Log transforms
+        self.df['log_reviews'] = np.log1p(self.df['total_reviews'].fillna(0))
+        self.df['log_wishlist'] = np.log1p(self.df['total_in_wishlist'].fillna(0))
+        self.df['log_price'] = np.log1p(self.df['price_numeric'].fillna(50000))
+        
+        # Additional features
+        max_reviews = self.df['log_reviews'].max()
+        max_wishlist = self.df['log_wishlist'].max()
+        
+        if max_reviews > 0 and max_wishlist > 0:
+            self.df['popularity_score'] = (
+                self.df['average_rating'] * 0.4 + 
+                (self.df['log_reviews'] / max_reviews) * 0.3 + 
+                (self.df['log_wishlist'] / max_wishlist) * 0.3
+            )
+        else:
+            self.df['popularity_score'] = self.df['average_rating'] * 0.8
+        
+        self.df['review_wishlist_ratio'] = (
+            self.df['total_in_wishlist'] / (self.df['total_reviews'] + 1)
+        ).clip(0, 10)
+        
+        # Content text for TF-IDF
+        content_texts = []
+        for _, row in self.df.iterrows():
+            content = f"{row['product_name']} {row['brand_name']} {row['default_category']} " * 2
+            content_texts.append(content.lower())
+        
+        self.df['content_text'] = content_texts
+        
+        print("✅ Features prepared")
+    
+    # ========================================================================
+    # SVD PARAMETER SENSITIVITY
+    # ========================================================================
+    
+    def analyze_svd_components(self):
+        """Analyze SVD n_components parameter"""
+        print("\n" + "="*70)
+        print("📊 ANALYZING SVD: n_components")
+        print("="*70)
+        
+        # Test different n_components
+        n_components_values = [10, 20, 30, 50, 100]
+        
+        for n_comp in n_components_values:
+            print(f"\n🔄 Testing n_components={n_comp}...")
+            
+            try:
+                # Create synthetic user-item matrix
+                n_users = min(500, len(self.df) // 10)
+                interactions = []
+                
+                for user_id in range(n_users):
+                    n_ratings = np.random.randint(10, 30)
+                    products = np.random.choice(len(self.df), n_ratings, replace=False)
+                    
+                    for prod_idx in products:
+                        base_rating = self.df.iloc[prod_idx]['average_rating']
+                        rating = np.clip(base_rating + np.random.normal(0, 0.3), 1, 5)
+                        interactions.append({
+                            'user_id': user_id,
+                            'item_id': prod_idx,
+                            'rating': rating
+                        })
+                
+                interactions_df = pd.DataFrame(interactions)
+                
+                # Build matrix
+                user_item_matrix = interactions_df.pivot_table(
+                    index='user_id', columns='item_id', values='rating', fill_value=0
+                )
+                
+                # Train-test split
+                train_size = int(len(interactions_df) * 0.8)
+                train_data = interactions_df.iloc[:train_size]
+                test_data = interactions_df.iloc[train_size:]
+                
+                train_matrix = train_data.pivot_table(
+                    index='user_id', columns='item_id', values='rating', fill_value=0
+                )
+                
+                # Ensure same shape
+                train_matrix = train_matrix.reindex(
+                    index=user_item_matrix.index, 
+                    columns=user_item_matrix.columns, 
+                    fill_value=0
+                )
+                
+                # Apply SVD
+                svd = TruncatedSVD(n_components=min(n_comp, min(train_matrix.shape) - 1), random_state=42)
+                user_factors = svd.fit_transform(train_matrix.values)
+                item_factors = svd.components_.T
+                
+                # Predict on test set
+                predictions = []
+                actuals = []
+                
+                for _, row in test_data.iterrows():
+                    user_id = row['user_id']
+                    item_id = row['item_id']
+                    actual_rating = row['rating']
+                    
+                    if user_id < user_factors.shape[0] and item_id < item_factors.shape[0]:
+                        predicted = np.dot(user_factors[user_id], item_factors[item_id])
+                        predicted_rating = np.clip(predicted + 3.5, 1, 5)
+                        
+                        predictions.append(predicted_rating)
+                        actuals.append(actual_rating)
+                
+                if len(predictions) > 10:
+                    r2 = r2_score(actuals, predictions)
+                    mae = mean_absolute_error(actuals, predictions)
+                    rmse = np.sqrt(mean_squared_error(actuals, predictions))
+                    
+                    self.results['svd'].append({
+                        'n_components': n_comp,
+                        'r2': r2,
+                        'mae': mae,
+                        'rmse': rmse
+                    })
+                    
+                    print(f"   ✅ R²: {r2:.3f}, MAE: {mae:.3f}, RMSE: {rmse:.3f}")
+                else:
+                    print(f"   ⚠️ Insufficient test samples")
+                    
+            except Exception as e:
+                print(f"   ❌ Error: {e}")
+        
+        return pd.DataFrame(self.results['svd'])
+    
+    # ========================================================================
+    # TF-IDF PARAMETER SENSITIVITY
+    # ========================================================================
+    
+    def analyze_tfidf_max_features(self):
+        """Analyze TF-IDF max_features parameter"""
+        print("\n" + "="*70)
+        print("📊 ANALYZING TF-IDF: max_features")
+        print("="*70)
+        
+        max_features_values = [500, 1000, 2000, 5000]
+        
+        for max_feat in max_features_values:
+            print(f"\n🔄 Testing max_features={max_feat}...")
+            
+            try:
+                # Create TF-IDF vectorizer
+                tfidf = TfidfVectorizer(
+                    max_features=max_feat,
+                    ngram_range=(1,2),
+                    stop_words='english'
+                )
+                
+                # Fit transform
+                content_matrix = tfidf.fit_transform(self.df['content_text'])
+                
+                # Sample products for evaluation
+                sample_size = min(200, len(self.df))
+                sample_indices = np.random.choice(len(self.df), sample_size, replace=False)
+                
+                predictions = []
+                actuals = []
+                
+                for idx in sample_indices:
+                    # Get similarity with all products
+                    product_vector = content_matrix[idx]
+                    similarities = cosine_similarity(product_vector, content_matrix).flatten()
+                    
+                    # Get top 5 similar (excluding self)
+                    top_similar = similarities.argsort()[::-1][1:6]
+                    
+                    # Predict rating as average of similar products
+                    similar_ratings = self.df.iloc[top_similar]['average_rating'].values
+                    predicted_rating = np.mean(similar_ratings)
+                    actual_rating = self.df.iloc[idx]['average_rating']
+                    
+                    predictions.append(predicted_rating)
+                    actuals.append(actual_rating)
+                
+                r2 = r2_score(actuals, predictions)
+                mae = mean_absolute_error(actuals, predictions)
+                rmse = np.sqrt(mean_squared_error(actuals, predictions))
+                
+                self.results['tfidf'].append({
+                    'max_features': max_feat,
+                    'r2': r2,
+                    'mae': mae,
+                    'rmse': rmse
+                })
+                
+                print(f"   ✅ R²: {r2:.3f}, MAE: {mae:.3f}, RMSE: {rmse:.3f}")
+                
+            except Exception as e:
+                print(f"   ❌ Error: {e}")
+        
+        return pd.DataFrame(self.results['tfidf'])
+    
+    # ========================================================================
+    # RANDOM FOREST PARAMETER SENSITIVITY
+    # ========================================================================
+    
+    def analyze_rf_n_estimators(self):
+        """Analyze Random Forest n_estimators parameter"""
+        print("\n" + "="*70)
+        print("📊 ANALYZING RANDOM FOREST: n_estimators")
+        print("="*70)
+        
+        n_estimators_values = [50, 100, 200, 500]
+        
+        # Prepare features
+        feature_names = [
+            'brand_encoded', 'category_encoded', 'log_reviews', 
+            'log_wishlist', 'log_price', 'popularity_score', 
+            'review_wishlist_ratio'
+        ]
+        
+        X = self.df[feature_names]
+        y = self.df['average_rating']
+        
+        # Remove NaN
+        mask = ~(X.isna().any(axis=1) | y.isna())
+        X = X[mask]
+        y = y[mask]
+        
+        # Split data
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42
+        )
+        
+        # Scale
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
+        
+        for n_est in n_estimators_values:
+            print(f"\n🔄 Testing n_estimators={n_est}...")
+            
+            try:
+                # Train RF
+                rf = RandomForestRegressor(
+                    n_estimators=n_est,
+                    max_depth=15,
+                    random_state=42,
+                    n_jobs=-1
+                )
+                
+                rf.fit(X_train_scaled, y_train)
+                
+                # Predict
+                y_pred = rf.predict(X_test_scaled)
+                
+                r2 = r2_score(y_test, y_pred)
+                mae = mean_absolute_error(y_test, y_pred)
+                rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+                
+                self.results['rf'].append({
+                    'n_estimators': n_est,
+                    'r2': r2,
+                    'mae': mae,
+                    'rmse': rmse
+                })
+                
+                print(f"   ✅ R²: {r2:.3f}, MAE: {mae:.3f}, RMSE: {rmse:.3f}")
+                
+            except Exception as e:
+                print(f"   ❌ Error: {e}")
+        
+        return pd.DataFrame(self.results['rf'])
+    
+    # ========================================================================
+    # VISUALIZATION & REPORTING
+    # ========================================================================
+    
+    def create_sensitivity_plots(self):
+        """Create sensitivity analysis plots"""
+        print("\n📊 Creating sensitivity plots...")
+        
+        fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+        
+        # 1. SVD Plot
+        if len(self.results['svd']) > 0:
+            svd_df = pd.DataFrame(self.results['svd'])
+            
+            ax1 = axes[0]
+            ax1.plot(svd_df['n_components'], svd_df['r2'], 'o-', linewidth=2, markersize=8, label='R²', color='steelblue')
+            ax1.set_xlabel('n_components', fontsize=12, fontweight='bold')
+            ax1.set_ylabel('R² Score', fontsize=12, fontweight='bold')
+            ax1.set_title('(a) SVD: n_components Sensitivity', fontsize=13, fontweight='bold')
+            ax1.grid(True, alpha=0.3)
+            ax1.legend()
+            
+            # Highlight optimal
+            best_idx = svd_df['r2'].idxmax()
+            best_n = svd_df.iloc[best_idx]['n_components']
+            best_r2 = svd_df.iloc[best_idx]['r2']
+            ax1.axvline(x=best_n, color='red', linestyle='--', alpha=0.5)
+            ax1.text(best_n, best_r2, f'  Optimal: {int(best_n)}', fontsize=10, color='red', fontweight='bold')
+        
+        # 2. TF-IDF Plot
+        if len(self.results['tfidf']) > 0:
+            tfidf_df = pd.DataFrame(self.results['tfidf'])
+            
+            ax2 = axes[1]
+            ax2.plot(tfidf_df['max_features'], tfidf_df['r2'], 'o-', linewidth=2, markersize=8, label='R²', color='coral')
+            ax2.set_xlabel('max_features', fontsize=12, fontweight='bold')
+            ax2.set_ylabel('R² Score', fontsize=12, fontweight='bold')
+            ax2.set_title('(b) TF-IDF: max_features Sensitivity', fontsize=13, fontweight='bold')
+            ax2.grid(True, alpha=0.3)
+            ax2.legend()
+            
+            # Highlight optimal
+            best_idx = tfidf_df['r2'].idxmax()
+            best_feat = tfidf_df.iloc[best_idx]['max_features']
+            best_r2 = tfidf_df.iloc[best_idx]['r2']
+            ax2.axvline(x=best_feat, color='red', linestyle='--', alpha=0.5)
+            ax2.text(best_feat, best_r2, f'  Optimal: {int(best_feat)}', fontsize=10, color='red', fontweight='bold')
+        
+        # 3. RF Plot
+        if len(self.results['rf']) > 0:
+            rf_df = pd.DataFrame(self.results['rf'])
+            
+            ax3 = axes[2]
+            ax3.plot(rf_df['n_estimators'], rf_df['r2'], 'o-', linewidth=2, markersize=8, label='R²', color='mediumseagreen')
+            ax3.set_xlabel('n_estimators', fontsize=12, fontweight='bold')
+            ax3.set_ylabel('R² Score', fontsize=12, fontweight='bold')
+            ax3.set_title('(c) Random Forest: n_estimators Sensitivity', fontsize=13, fontweight='bold')
+            ax3.grid(True, alpha=0.3)
+            ax3.legend()
+            
+            # Highlight optimal
+            best_idx = rf_df['r2'].idxmax()
+            best_n = rf_df.iloc[best_idx]['n_estimators']
+            best_r2 = rf_df.iloc[best_idx]['r2']
+            ax3.axvline(x=best_n, color='red', linestyle='--', alpha=0.5)
+            ax3.text(best_n, best_r2, f'  Optimal: {int(best_n)}', fontsize=10, color='red', fontweight='bold')
+        
+        plt.tight_layout()
+        plt.savefig('parameter_sensitivity_analysis.png', dpi=300, bbox_inches='tight')
+        print("✅ Saved: parameter_sensitivity_analysis.png")
+        plt.close()
+    
+    def generate_tables_for_paper(self):
+        """Generate formatted tables for paper"""
+        print("\n" + "="*70)
+        print("📋 TABLES FOR PAPER")
+        print("="*70)
+        
+        # Table 1: SVD Sensitivity
+        if len(self.results['svd']) > 0:
+            svd_df = pd.DataFrame(self.results['svd'])
+            print("\nTabel: Analisis Sensitivitas Parameter SVD")
+            print("┌" + "─"*15 + "┬" + "─"*10 + "┬" + "─"*10 + "┬" + "─"*10 + "┐")
+            print("│ n_components  │   R²     │   MAE    │   RMSE   │")
+            print("├" + "─"*15 + "┼" + "─"*10 + "┼" + "─"*10 + "┼" + "─"*10 + "┤")
+            
+            for _, row in svd_df.iterrows():
+                marker = " ← Optimal" if row['r2'] == svd_df['r2'].max() else ""
+                print(f"│ {int(row['n_components']):>13} │ {row['r2']:>8.3f} │ {row['mae']:>8.3f} │ {row['rmse']:>8.3f} │{marker}")
+            
+            print("└" + "─"*15 + "┴" + "─"*10 + "┴" + "─"*10 + "┴" + "─"*10 + "┘")
+        
+        # Table 2: TF-IDF Sensitivity
+        if len(self.results['tfidf']) > 0:
+            tfidf_df = pd.DataFrame(self.results['tfidf'])
+            print("\nTabel: Analisis Sensitivitas Parameter TF-IDF")
+            print("┌" + "─"*15 + "┬" + "─"*10 + "┬" + "─"*10 + "┬" + "─"*10 + "┐")
+            print("│ max_features  │   R²     │   MAE    │   RMSE   │")
+            print("├" + "─"*15 + "┼" + "─"*10 + "┼" + "─"*10 + "┼" + "─"*10 + "┤")
+            
+            for _, row in tfidf_df.iterrows():
+                marker = " ← Optimal" if row['r2'] == tfidf_df['r2'].max() else ""
+                print(f"│ {int(row['max_features']):>13} │ {row['r2']:>8.3f} │ {row['mae']:>8.3f} │ {row['rmse']:>8.3f} │{marker}")
+            
+            print("└" + "─"*15 + "┴" + "─"*10 + "┴" + "─"*10 + "┴" + "─"*10 + "┘")
+        
+        # Table 3: RF Sensitivity
+        if len(self.results['rf']) > 0:
+            rf_df = pd.DataFrame(self.results['rf'])
+            print("\nTabel: Analisis Sensitivitas Parameter Random Forest")
+            print("┌" + "─"*15 + "┬" + "─"*10 + "┬" + "─"*10 + "┬" + "─"*10 + "┐")
+            print("│ n_estimators  │   R²     │   MAE    │   RMSE   │")
+            print("├" + "─"*15 + "┼" + "─"*10 + "┼" + "─"*10 + "┼" + "─"*10 + "┤")
+            
+            for _, row in rf_df.iterrows():
+                marker = " ← Optimal" if row['r2'] == rf_df['r2'].max() else ""
+                print(f"│ {int(row['n_estimators']):>13} │ {row['r2']:>8.3f} │ {row['mae']:>8.3f} │ {row['rmse']:>8.3f} │{marker}")
+            
+            print("└" + "─"*15 + "┴" + "─"*10 + "┴" + "─"*10 + "┴" + "─"*10 + "┘")
+    
+    def save_results_to_csv(self):
+        """Save all results to CSV"""
+        for model_name, results in self.results.items():
+            if len(results) > 0:
+                df = pd.DataFrame(results)
+                filename = f'sensitivity_{model_name}.csv'
+                df.to_csv(filename, index=False)
+                print(f"💾 Saved: {filename}")
+    
+    def run_full_analysis(self):
+        """Run complete parameter sensitivity analysis"""
+        print("🚀 PARAMETER SENSITIVITY ANALYSIS")
+        print("="*70)
+        
+        if not self.load_data():
+            return
+        
+        # Run all analyses
+        self.analyze_svd_components()
+        self.analyze_tfidf_max_features()
+        self.analyze_rf_n_estimators()
+        
+        # Generate outputs
+        self.create_sensitivity_plots()
+        self.generate_tables_for_paper()
+        self.save_results_to_csv()
+        
+        print("\n" + "="*70)
+        print("✅ ANALYSIS COMPLETED!")
+        print("="*70)
+        print("\n📁 Generated files:")
+        print("   - parameter_sensitivity_analysis.png")
+        print("   - sensitivity_svd.csv")
+        print("   - sensitivity_tfidf.csv")
+        print("   - sensitivity_rf.csv")
+        print("\n💡 Copy the tables above to your paper!")
+
+
+def main():
+    """Run parameter sensitivity analysis"""
+    analysis = ParameterSensitivityAnalysis()
+    analysis.run_full_analysis()
+
+
+if __name__ == "__main__":
+    main()
