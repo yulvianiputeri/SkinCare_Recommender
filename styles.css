@@ -1,0 +1,414 @@
+/* ====================================================
+   Skincare ML — styles.css
+   ==================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap');
+
+/* ===== DESIGN TOKENS ===== */
+:root {
+    --primary: #D85A30;
+    --primary-dark: #993C1D;
+    --primary-light: #F0997B;
+    --primary-bg: #FAECE7;
+
+    --success: #1D9E75;
+    --success-bg: #E1F5EE;
+    --warning: #BA7517;
+    --warning-bg: #FAEEDA;
+    --error: #A32D2D;
+    --error-bg: #FCEBEB;
+    --info: #185FA5;
+    --info-bg: #E6F1FB;
+
+    --bg-main: #F8F6F3;
+    --bg-card: #ffffff;
+    --bg-muted: #F1EFE8;
+    --text-primary: #1e1c1a;
+    --text-secondary: #6b6760;
+    --border: #e4e1da;
+    --border-strong: #cbc8c0;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 18px;
+
+    --font-sans: 'DM Sans', system-ui, sans-serif;
+    --font-display: 'DM Serif Display', Georgia, serif;
+}
+
+/* ===== BASE ===== */
+.stApp, blockquote {
+    background: var(--bg-main) !important;
+    font-family: var(--font-sans) !important;
+}
+
+.block-container {
+    padding-top: 1.25rem !important;
+    padding-bottom: 2rem !important;
+}
+
+/* ===== TYPOGRAPHY ===== */
+h1 {
+    font-family: var(--font-display) !important;
+    font-style: italic !important;
+    font-weight: 400 !important;
+    color: var(--text-primary) !important;
+    font-size: 2rem !important;
+    letter-spacing: -0.3px !important;
+}
+
+h2 {
+    font-family: var(--font-display) !important;
+    font-style: italic !important;
+    font-weight: 400 !important;
+    font-size: 1.35rem !important;
+    color: var(--text-primary) !important;
+    margin-top: 1.25rem !important;
+    margin-bottom: 0.75rem !important;
+}
+
+h3 {
+    font-family: var(--font-sans) !important;
+    font-weight: 500 !important;
+    font-size: 1rem !important;
+    color: var(--text-primary) !important;
+    margin-top: 1rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+p, .stMarkdown p {
+    color: var(--text-secondary) !important;
+    line-height: 1.65 !important;
+    font-size: 0.9rem !important;
+}
+
+/* ===== METRIC CARDS ===== */
+.metric-card {
+    background: var(--bg-card);
+    padding: 1.1rem 1.25rem;
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border);
+    text-align: left;
+    transition: border-color 0.15s;
+}
+
+.metric-card:hover {
+    border-color: var(--border-strong);
+}
+
+.metric-card h3 {
+    color: var(--text-secondary) !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    margin: 0 0 0.35rem !important;
+}
+
+.metric-card h2 {
+    font-family: var(--font-sans) !important;
+    font-style: normal !important;
+    color: var(--text-primary) !important;
+    font-size: 1.75rem !important;
+    font-weight: 500 !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+}
+
+/* ===== RECOMMENDATION CARDS ===== */
+.rec-card {
+    background: var(--bg-card);
+    padding: 1.1rem 1.25rem;
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border);
+    border-left: 3px solid var(--primary);
+    margin: 0.6rem 0;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.rec-card:hover {
+    border-color: var(--border-strong);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.rec-card h4 {
+    color: var(--text-primary) !important;
+    font-weight: 500 !important;
+    margin: 0 0 0.4rem !important;
+    font-size: 0.95rem !important;
+}
+
+.rec-card p {
+    color: var(--text-secondary) !important;
+    margin: 0.2rem 0 !important;
+    font-size: 0.85rem !important;
+    line-height: 1.5 !important;
+}
+
+.rec-card b {
+    color: var(--text-primary) !important;
+    font-weight: 500 !important;
+}
+
+/* ===== COMPARISON CARDS ===== */
+.comparison-card {
+    background: var(--bg-muted);
+    padding: 1.25rem;
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border);
+    margin: 0.75rem 0;
+}
+
+/* ===== STATUS / ALERT CARDS ===== */
+.warning-card {
+    background: var(--warning-bg);
+    padding: 0.9rem 1.1rem;
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--warning);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.error-card {
+    background: var(--error-bg);
+    padding: 0.9rem 1.1rem;
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--error);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.success-card {
+    background: var(--success-bg);
+    padding: 0.9rem 1.1rem;
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--success);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+/* ===== SCORE BADGES ===== */
+.score-badge {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 20px;
+    font-weight: 500;
+    font-size: 0.78rem;
+    background: var(--bg-muted);
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+}
+
+.score-badge.score-high {
+    background: var(--success-bg);
+    color: #085041;
+}
+
+.score-badge.score-medium {
+    background: var(--warning-bg);
+    color: #633806;
+}
+
+.score-badge.score-low {
+    background: var(--error-bg);
+    color: var(--error);
+}
+
+/* ===== FORM INPUTS ===== */
+.stSelectbox > div > div > div,
+.stTextInput > div > div > input,
+.stNumberInput > div > div > input {
+    background: var(--bg-card) !important;
+    border: 0.5px solid var(--border-strong) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 0.55rem 0.75rem !important;
+    font-size: 0.875rem !important;
+    font-family: var(--font-sans) !important;
+    color: var(--text-primary) !important;
+    transition: border-color 0.15s !important;
+}
+
+.stSelectbox > div > div > div:focus-within,
+.stTextInput > div > div > input:focus,
+.stNumberInput > div > div > input:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(216, 90, 48, 0.1) !important;
+    outline: none !important;
+}
+
+.stSelectbox > label,
+.stTextInput > label,
+.stNumberInput > label,
+.stTextArea > label {
+    color: var(--text-primary) !important;
+    font-weight: 500 !important;
+    font-size: 0.82rem !important;
+    letter-spacing: 0.01em !important;
+}
+
+/* ===== BUTTONS ===== */
+div.stButton > button {
+    background: var(--bg-card) !important;
+    border: 0.5px solid var(--border-strong) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 0.55rem 1.1rem !important;
+    font-weight: 500 !important;
+    font-size: 0.875rem !important;
+    font-family: var(--font-sans) !important;
+    color: var(--text-primary) !important;
+    transition: background 0.12s, border-color 0.12s !important;
+    box-shadow: none !important;
+}
+
+div.stButton > button:hover {
+    background: var(--bg-muted) !important;
+    border-color: var(--primary) !important;
+    transform: none !important;
+}
+
+div.stButton > button[kind="primary"] {
+    background: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: #fff !important;
+}
+
+div.stButton > button[kind="primary"]:hover {
+    background: var(--primary-dark) !important;
+    border-color: var(--primary-dark) !important;
+}
+
+div.stButton > button:active {
+    transform: scale(0.98) !important;
+}
+
+/* ===== TABS ===== */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 0;
+    background: transparent;
+    border-bottom: 0.5px solid var(--border);
+    padding: 0;
+    border-radius: 0;
+}
+
+.stTabs [data-baseweb="tab"] {
+    border-radius: 0;
+    padding: 0.65rem 1rem;
+    font-weight: 400;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    background: transparent;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -0.5px;
+}
+
+.stTabs [aria-selected="true"] {
+    background: transparent !important;
+    color: var(--text-primary) !important;
+    font-weight: 500 !important;
+    border-bottom: 2px solid var(--primary) !important;
+}
+
+.stTabs [data-baseweb="tab"]:hover:not([aria-selected="true"]) {
+    color: var(--text-primary) !important;
+    background: transparent !important;
+}
+
+/* ===== SIDEBAR ===== */
+[data-testid="stSidebar"] {
+    background: var(--bg-card) !important;
+    border-right: 0.5px solid var(--border) !important;
+}
+
+[data-testid="stSidebar"] .stMetric {
+    background: var(--bg-muted);
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 0.4rem;
+}
+
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 {
+    font-size: 0.78rem !important;
+    font-family: var(--font-sans) !important;
+    font-style: normal !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    color: var(--text-secondary) !important;
+    margin-top: 1.25rem !important;
+}
+
+/* ===== DATAFRAME / TABLE ===== */
+[data-testid="stDataFrame"] {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    border: 0.5px solid var(--border);
+}
+
+[data-testid="stDataFrame"] thead {
+    background: var(--bg-muted) !important;
+}
+
+[data-testid="stDataFrame"] thead th {
+    color: var(--text-secondary) !important;
+    font-weight: 500 !important;
+    font-size: 0.78rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    padding: 0.65rem 0.9rem !important;
+}
+
+[data-testid="stDataFrame"] tbody tr:nth-child(even) {
+    background: var(--bg-main);
+}
+
+[data-testid="stDataFrame"] tbody tr:hover {
+    background: var(--primary-bg);
+}
+
+[data-testid="stDataFrame"] tbody td {
+    font-size: 0.875rem !important;
+    color: var(--text-primary) !important;
+    padding: 0.55rem 0.9rem !important;
+}
+
+/* ===== EXPANDERS ===== */
+.streamlit-expander {
+    border-radius: var(--radius-md) !important;
+    border: 0.5px solid var(--border) !important;
+    margin: 0.4rem 0 !important;
+    background: var(--bg-card) !important;
+}
+
+.streamlit-expander > details > summary {
+    font-weight: 500 !important;
+    font-size: 0.875rem !important;
+    color: var(--text-primary) !important;
+    padding: 0.75rem 1rem !important;
+}
+
+/* ===== SPINNER ===== */
+.stSpinner > div {
+    border-top-color: var(--primary) !important;
+}
+
+/* ===== LOADING SHIMMER ===== */
+.shimmer {
+    background: linear-gradient(90deg, var(--bg-muted) 25%, var(--border) 50%, var(--bg-muted) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: var(--radius-md);
+}
+
+@keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position:  200% 0; }
+}
+
+/* ===== INFO MESSAGES ===== */
+.stAlert {
+    border-radius: var(--radius-md) !important;
+    font-size: 0.875rem !important;
+    font-family: var(--font-sans) !important;
+}

@@ -1,4 +1,26 @@
-sociolla/
+# Python cache
 __pycache__/
 *.pyc
+*.pyo
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Environment variables
 .env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Data asli Sociolla (PRIVASI)
+sociolla/
