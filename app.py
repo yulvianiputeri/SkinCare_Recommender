@@ -54,6 +54,8 @@ def load_data():
     for path in paths:
         try:
             df = pd.read_csv(path)
+            # Filter out Unknown brand from display (but keep in dataset for consistency)
+            df = df[df['brand_name'] != 'Unknown']
             return df
         except FileNotFoundError:
             continue
